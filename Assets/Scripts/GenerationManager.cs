@@ -7,6 +7,7 @@ using Random = UnityEngine.Random;
 
 public class GenerationManager : MonoBehaviour
 {
+    [Header("Generators")]
     [SerializeField]
     private GenerateObjectsInArea[] boxGenerators;
     [SerializeField]
@@ -14,11 +15,11 @@ public class GenerationManager : MonoBehaviour
     [SerializeField]
     private GenerateObjectsInArea pirateGenerator;
 
-    [Space(10)]
-    private List<BoatLogic> _activeBoats;
-    private List<PirateLogic> _activePirates;
+    [SerializeField] private GenerateObjectsInArea omnivoreGenerator;
 
-    [Space(10)] 
+
+    [Space(10)]
+    [Header("Parenting and Mutation")]
     [SerializeField]
     private float mutationFactor;
     [SerializeField] 
@@ -27,35 +28,53 @@ public class GenerationManager : MonoBehaviour
     private int boatParentSize;
     [SerializeField] 
     private int pirateParentSize;
-
-    private BoatLogic[] _boatParents;
-    private PirateLogic[] _pirateParents;
+    [SerializeField] 
+    private int omnivoreParentSize;
 
     [Space(10)] 
-    [SerializeField]
+    [Header("Simulation Controls")]
+    [SerializeField, Tooltip("Time per simulation (in seconds).")]
     private float simulationTimer;
-    [SerializeField]
+    [SerializeField, Tooltip("Current time spent on this simulation.")]
     private float simulationCount;
-    [SerializeField]
+    [SerializeField, Tooltip("Automatically starts the simulation on Play.")]
     private bool runOnStart;
-    
-    private bool _runningSimulation;
-
-    [SerializeField]
+    [SerializeField, Tooltip("Initial count for the simulation. Used for the Prefabs naming.")]
     private int generationCount;
+
+    [Space(10)] 
+    [Header("Prefab Saving")]
     [SerializeField]
     private string savePrefabsAt;
     
+    /// <summary>
+    /// Those variables are used mostly for debugging in the inspector.
+    /// </summary>
+    [Header("Former winners")]
     [SerializeField]
     private AgentData lastBoatWinnerData;
     [SerializeField]
     private AgentData lastPirateWinnerData;
+    [SerializeField] 
+    private AgentData lastOmnivoreWinnerData;
+
+    private bool _runningSimulation;
+    private List<BoatLogic> _activeBoats;
+    private List<PirateLogic> _activePirates;
+    private List<OmnivoreScript> _activeOmnivores;
+    private BoatLogic[] _boatParents;
+    private PirateLogic[] _pirateParents;
+    private OmnivoreScript[] _omnivoreParents;
+    
+    private void Awake()
+    {
+        Random.InitState(6);
+    }
 
     private void Start()
     {
         if (runOnStart)
         {
-            generationCount = 1;
             StartSimulation();
         }
     }
@@ -64,6 +83,7 @@ public class GenerationManager : MonoBehaviour
     {
         if (_runningSimulation)
         {
+            //Creates a new generation.
             if (simulationCount >= simulationTimer)
             {
                 ++generationCount;
@@ -74,6 +94,10 @@ public class GenerationManager : MonoBehaviour
         }
     }
 
+     
+    /// <summary>
+    /// Generates the boxes on all box areas.
+    /// </summary>
     public void GenerateBoxes()
     {
         foreach (GenerateObjectsInArea generateObjectsInArea in boxGenerators)
@@ -82,17 +106,30 @@ public class GenerationManager : MonoBehaviour
         }
     }
     
-    public void GenerateObjects(BoatLogic[] boatParents = null, PirateLogic[] pirateParents = null)
+     /// <summary>
+     /// Generates boats and pirates using the parents list.
+     /// If no parents are used, then they are ignored and the boats/pirates are generated using the default prefab
+     /// specified in their areas.
+     /// </summary>
+     /// <param name="boatParents"></param>
+     /// <param name="pirateParents"></param>
+    public void GenerateObjects(BoatLogic[] boatParents = null, PirateLogic[] pirateParents = null, OmnivoreScript[] omnivoreParents = null)
     {
         GenerateBoats(boatParents);
         GeneratePirates(pirateParents);
+        GenerateOmnivores(omnivoreParents);
     }
 
+     /// <summary>
+     /// Generates the list of pirates using the parents list. The parent list can be null and, if so, it will be ignored.
+     /// Newly created pirates will go under mutation (MutationChances and MutationFactor will be applied).
+     /// Newly create agents will be Awaken (calling AwakeUp()).
+     /// </summary>
+     /// <param name="pirateParents"></param>
     private void GeneratePirates(PirateLogic[] pirateParents)
     {
-        List<GameObject> objects;
         _activePirates = new List<PirateLogic>();
-        objects = pirateGenerator.RegenerateObjects();
+        List<GameObject> objects = pirateGenerator.RegenerateObjects();
         foreach (GameObject obj in objects)
         {
             PirateLogic pirate = obj.GetComponent<PirateLogic>();
@@ -101,7 +138,7 @@ public class GenerationManager : MonoBehaviour
                 _activePirates.Add(pirate);
                 if (pirateParents != null)
                 {
-                    PirateLogic pirateParent = pirateParents[Random.Range(0, pirateParents.Length - 1)];
+                    PirateLogic pirateParent = pirateParents[Random.Range(0, pirateParents.Length)];
                     pirate.Birth(pirateParent.GetData());
                 }
 
@@ -110,7 +147,35 @@ public class GenerationManager : MonoBehaviour
             }
         }
     }
+     
+     private void GenerateOmnivores(OmnivoreScript[] omnivoreParents)
+     {
+         _activeOmnivores = new List<OmnivoreScript>();
+         List<GameObject> objects = omnivoreGenerator.RegenerateObjects();
+         foreach (GameObject obj in objects)
+         {
+             OmnivoreScript omnivore = obj.GetComponent<OmnivoreScript>();
+             if (omnivore != null)
+             {
+                 _activeOmnivores.Add(omnivore);
+                 if (omnivoreParents != null)
+                 {
+                     OmnivoreScript omnivoreParent = omnivoreParents[Random.Range(0, omnivoreParents.Length)];
+                     omnivore.Birth(omnivoreParent.GetData());
+                 }
 
+                 omnivore.Mutate(mutationFactor, mutationChance);
+                 omnivore.AwakeUp();
+             }
+         }
+     }
+
+     /// <summary>
+     /// Generates the list of boats using the parents list. The parent list can be null and, if so, it will be ignored.
+     /// Newly created boats will go under mutation (MutationChances and MutationFactor will be applied).
+     /// /// Newly create agents will be Awaken (calling AwakeUp()).
+     /// </summary>
+     /// <param name="boatParents"></param>
     private void GenerateBoats(BoatLogic[] boatParents)
     {
         _activeBoats = new List<BoatLogic>();
@@ -123,7 +188,7 @@ public class GenerationManager : MonoBehaviour
                 _activeBoats.Add(boat);
                 if (boatParents != null)
                 {
-                    BoatLogic boatParent = boatParents[Random.Range(0, boatParents.Length - 1)];
+                    BoatLogic boatParent = boatParents[Random.Range(0, boatParents.Length)];
                     boat.Birth(boatParent.GetData());
                 }
 
@@ -133,8 +198,16 @@ public class GenerationManager : MonoBehaviour
         }
     }
 
+     /// <summary>
+     /// Creates a new generation by using GenerateBoxes and GenerateBoats/Pirates.
+     /// Previous generations will be removed and the best parents will be selected and used to create the new generation.
+     /// The best parents (top 1) of the generation will be stored as a Prefab in the [savePrefabsAt] folder. Their name
+     /// will use the [generationCount] as an identifier.
+     /// </summary>
     public void MakeNewGeneration()
     {
+        Random.InitState(6);
+
         GenerateBoxes();
         
         //Fetch parents
@@ -168,19 +241,56 @@ public class GenerationManager : MonoBehaviour
         lastPirateWinnerData = lastPirateWinner.GetData();
         PrefabUtility.SaveAsPrefabAsset(lastPirateWinner.gameObject, savePrefabsAt + lastPirateWinner.name + ".prefab");
         
-        //Winners:
-        Debug.Log("Last winner boat had: " + lastBoatWinner.GetPoints() + " points!" + " Last winner pirate had: " + lastPirateWinner.GetPoints() + " points!");
+        //Omnivores
+        _activeOmnivores.RemoveAll(item => item == null);
+        _activeOmnivores.Sort();
+        _omnivoreParents = new OmnivoreScript[omnivoreParentSize];
+        for (int i = 0; i < omnivoreParentSize; i++)
+        {
+            _omnivoreParents[i] = _activeOmnivores[i];
+        }
+
+        OmnivoreScript lastOmnivoreWinner = _activeOmnivores[0];
+        lastOmnivoreWinner.name += "Gen-" + generationCount; 
+        lastOmnivoreWinnerData = lastOmnivoreWinner.GetData();
+        PrefabUtility.SaveAsPrefabAsset(lastOmnivoreWinner.gameObject, savePrefabsAt + lastOmnivoreWinner.name + ".prefab");
         
-        GenerateObjects(_boatParents, _pirateParents);
+        //Winners:
+        Debug.Log("Last winner boat had: " + lastBoatWinner.GetPoints() + " points!" + " Last winner pirate had: " + lastPirateWinner.GetPoints() + " points!" 
+                  + "Last winner Omni had: " + lastOmnivoreWinner.GetPoints() + " points!" );
+        
+        GenerateObjects(_boatParents, _pirateParents, _omnivoreParents);
+        
+        Logger.instance.SaveData(generationCount, lastBoatWinner.GetPoints(), lastPirateWinner.GetPoints(), lastOmnivoreWinner.GetPoints());
     }
 
+     /// <summary>
+     /// Starts a new simulation. It does not call MakeNewGeneration. It calls both GenerateBoxes and GenerateObjects and
+     /// then sets the _runningSimulation flag to true.
+     /// </summary>
     public void StartSimulation()
     {
+        Random.InitState(6);
+
         GenerateBoxes();
         GenerateObjects();
         _runningSimulation = true;
     }
-    
+
+     /// <summary>
+     /// Continues the simulation. It calls MakeNewGeneration to use the previous state of the simulation and continue it.
+     /// It sets the _runningSimulation flag to true.
+     /// </summary>
+     public void ContinueSimulation()
+     {
+         MakeNewGeneration();
+         _runningSimulation = true;
+     }
+     
+     /// <summary>
+     /// Stops the count for the simulation. It also removes null (Destroyed) boats from the _activeBoats list and sets
+     /// all boats and pirates to Sleep.
+     /// </summary>
     public void StopSimulation()
     {
         _runningSimulation = false;

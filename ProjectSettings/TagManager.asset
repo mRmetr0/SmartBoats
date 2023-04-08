@@ -7,6 +7,10 @@ TagManager:
   - Boat
   - Box
   - Enemy
+  - Plant
+  - Omnivore
+  - Carnivore
+  - Herbivore
   layers:
   - Default
   - TransparentFX
