@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
+using UnityEngine.AI;
 using Random = UnityEngine.Random;
 
 [RequireComponent(typeof(Rigidbody))]
@@ -25,6 +27,10 @@ public class BoatLogic : AgentLogic
             //This is a safe-fail mechanism. In case something goes wrong and the Boat is not destroyed after touching
             //a pirate, it also gets a massive negative number of points.
             points += _piratePoints;
+            try
+            {
+                Destroy(this.gameObject);
+            } catch (Exception e) {Debug.Log("Failed to remove boat");}
         }
     }
 }

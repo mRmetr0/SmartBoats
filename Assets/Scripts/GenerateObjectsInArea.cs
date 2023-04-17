@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using Random = UnityEngine.Random;
 using System.Collections.Generic;
+using UnityEditor;
 
 /// <summary>
 /// Script to generate objects in an given area.
@@ -61,7 +62,25 @@ public class GenerateObjectsInArea : MonoBehaviour
 
         return newObjects;
     }
-    
+
+    public List<GameObject> RegenerateObjects(int amount)
+    {
+        for (int i = transform.childCount - 1; i >= 0; --i)
+        {
+            DestroyImmediate(transform.GetChild(i).gameObject);
+        }
+        
+        List<GameObject> newObjects = new List<GameObject>();
+        for (uint i = 0; i < amount; i++)
+        {
+            GameObject created = Instantiate(gameObjectToBeCreated[Random.Range(0, gameObjectToBeCreated.Length)], GetRandomPositionInWorldBounds(), GetRandomRotation());
+            created.transform.parent = transform;
+            newObjects.Add(created);
+        }
+
+        return newObjects;
+    }
+
     /// <summary>
     /// Gets a random position delimited by the bounds, using its extends and center.
     /// </summary>

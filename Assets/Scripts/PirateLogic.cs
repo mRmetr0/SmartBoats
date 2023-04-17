@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using Random = UnityEngine.Random;
 
 [RequireComponent(typeof(Rigidbody))]
@@ -24,11 +25,26 @@ public class PirateLogic : AgentLogic
         if(other.gameObject.tag.Equals("Boat"))
         {
             points += _boatPoints;
-            Destroy(other.gameObject);
+            try
+            {
+                Destroy(other.gameObject);
+            }
+            catch (Exception e)
+            {
+                Debug.Log("Unable to destroy Herbivore");
+            }
+
         } else if(other.gameObject.tag.Equals("Omnivore"))
         {
             points += _omnivorePoints;
-            Destroy(other.gameObject);
+            try
+            {
+                Destroy(other.gameObject);
+            }
+            catch (Exception e)
+            {
+                Debug.Log("Unable to destroy Omnivore");
+            }
         }
     }
 

@@ -22,45 +22,39 @@ public class Logger : MonoBehaviour
             Destroy(gameObject);
         }
         
-        /**/
         var info = new DirectoryInfo(path);
 
         string id = "Log "+(info.GetFiles().Length/2);
         path += id + ".txt";
         
-        File.WriteAllText(path, "Gen: \nHerbi: \nCarni: \nOmni: ");
-
-        /**
-        string id = DateTime.Now.ToString("MM-dd-yyyy");
-        path += id + ".txt";
-        try
-        {
-            reader = new StreamReader(path);
-            reader.Close();
-        }
-        catch
-        {
-            Debug.Log("Text file did not exist");
-            File.WriteAllText(path, "gen:\nherbi:\ncarni:\nomni:");
-        }
-        /**/
+        File.WriteAllText(path, "Gen: \nHerbi: \nCarni: \nOmni: \nCount: \nHerbiCount: \nCardiCount: \nOmniCount: ");
     }
 
-    public void SaveData(int gencount, float herbiPoints, float carniPoints, float omniPoints)
+    public void SaveData(int gencount, float herbiPoints, float carniPoints, float omniPoints, float herbiAmount = 0, float carniAmount = 0, float omniAmount = 0)
     {
         reader = new StreamReader(path);
         reader.ReadLine();
+        //Read info about points:
         string herbi = reader.ReadLine();
         string carni = reader.ReadLine();
         string omni = reader.ReadLine();
         herbi = AddTo(herbi, CheckString(herbiPoints.ToString()));
         carni = AddTo(carni, CheckString(carniPoints.ToString()));
         omni = AddTo(omni, CheckString(omniPoints.ToString()));
+        
+        reader.ReadLine();
+        //Read info about population density:
+        string herbiCount = reader.ReadLine();
+        string carniCount = reader.ReadLine();
+        string omniCount = reader.ReadLine();
+        herbiCount = AddTo(herbiCount, CheckString(herbiAmount.ToString()));
+        carniCount = AddTo(carniCount, CheckString(carniAmount.ToString()));
+        omniCount = AddTo(omniCount, CheckString(omniAmount.ToString()));
         reader.Close();
         Debug.Log("Gen: " + gencount + "\n"+ herbi + carni + omni);
         try
         {
-            File.WriteAllText(path, "Gen: "+gencount + "\n"+ herbi + carni + omni);
+            File.WriteAllText(path, "Gen: "+gencount + "\n"+ herbi + carni + omni +"Count: \n"+ herbiCount + carniCount + omniCount);
         }
         catch(Exception e)
         {

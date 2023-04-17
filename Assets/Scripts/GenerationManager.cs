@@ -9,27 +9,27 @@ public class GenerationManager : MonoBehaviour
 {
     [Header("Generators")]
     [SerializeField]
-    private GenerateObjectsInArea[] boxGenerators;
+    protected GenerateObjectsInArea[] boxGenerators;
     [SerializeField]
-    private GenerateObjectsInArea boatGenerator;
+    protected GenerateObjectsInArea boatGenerator;
     [SerializeField]
-    private GenerateObjectsInArea pirateGenerator;
-
-    [SerializeField] private GenerateObjectsInArea omnivoreGenerator;
+    protected GenerateObjectsInArea pirateGenerator;
+    [SerializeField] 
+    protected GenerateObjectsInArea omnivoreGenerator;
 
 
     [Space(10)]
     [Header("Parenting and Mutation")]
     [SerializeField]
-    private float mutationFactor;
+    protected float mutationFactor;
     [SerializeField] 
-    private float mutationChance;
+    protected float mutationChance;
     [SerializeField] 
-    private int boatParentSize;
+    protected int boatParentSize;
     [SerializeField] 
-    private int pirateParentSize;
+    protected int pirateParentSize;
     [SerializeField] 
-    private int omnivoreParentSize;
+    protected int omnivoreParentSize;
 
     [Space(10)] 
     [Header("Simulation Controls")]
@@ -44,6 +44,8 @@ public class GenerationManager : MonoBehaviour
 
     [Space(10)] 
     [Header("Prefab Saving")]
+    [SerializeField] 
+    private bool savePrefabs;
     [SerializeField]
     private string savePrefabsAt;
     
@@ -59,14 +61,14 @@ public class GenerationManager : MonoBehaviour
     private AgentData lastOmnivoreWinnerData;
 
     private bool _runningSimulation;
-    private List<BoatLogic> _activeBoats;
-    private List<PirateLogic> _activePirates;
-    private List<OmnivoreScript> _activeOmnivores;
+    protected List<BoatLogic> _activeBoats;
+    protected List<PirateLogic> _activePirates;
+    protected List<OmnivoreScript> _activeOmnivores;
     private BoatLogic[] _boatParents;
     private PirateLogic[] _pirateParents;
     private OmnivoreScript[] _omnivoreParents;
     
-    private void Awake()
+    protected void Awake()
     {
         Random.InitState(6);
     }
@@ -105,14 +107,15 @@ public class GenerationManager : MonoBehaviour
             generateObjectsInArea.RegenerateObjects();
         }
     }
-    
-     /// <summary>
-     /// Generates boats and pirates using the parents list.
-     /// If no parents are used, then they are ignored and the boats/pirates are generated using the default prefab
-     /// specified in their areas.
-     /// </summary>
-     /// <param name="boatParents"></param>
-     /// <param name="pirateParents"></param>
+
+    /// <summary>
+    /// Generates boats and pirates using the parents list.
+    /// If no parents are used, then they are ignored and the boats/pirates are generated using the default prefab
+    /// specified in their areas.
+    /// </summary>
+    /// <param name="boatParents"></param>
+    /// <param name="pirateParents"></param>
+    /// <param name="omnivoreParents"></param>
     public void GenerateObjects(BoatLogic[] boatParents = null, PirateLogic[] pirateParents = null, OmnivoreScript[] omnivoreParents = null)
     {
         GenerateBoats(boatParents);
@@ -126,7 +129,7 @@ public class GenerationManager : MonoBehaviour
      /// Newly create agents will be Awaken (calling AwakeUp()).
      /// </summary>
      /// <param name="pirateParents"></param>
-    private void GeneratePirates(PirateLogic[] pirateParents)
+     protected virtual void GeneratePirates(PirateLogic[] pirateParents)
     {
         _activePirates = new List<PirateLogic>();
         List<GameObject> objects = pirateGenerator.RegenerateObjects();
@@ -148,7 +151,7 @@ public class GenerationManager : MonoBehaviour
         }
     }
      
-     private void GenerateOmnivores(OmnivoreScript[] omnivoreParents)
+     protected virtual void GenerateOmnivores(OmnivoreScript[] omnivoreParents)
      {
          _activeOmnivores = new List<OmnivoreScript>();
          List<GameObject> objects = omnivoreGenerator.RegenerateObjects();
@@ -176,7 +179,7 @@ public class GenerationManager : MonoBehaviour
      /// /// Newly create agents will be Awaken (calling AwakeUp()).
      /// </summary>
      /// <param name="boatParents"></param>
-    private void GenerateBoats(BoatLogic[] boatParents)
+    protected virtual void GenerateBoats(BoatLogic[] boatParents)
     {
         _activeBoats = new List<BoatLogic>();
         List<GameObject> objects = boatGenerator.RegenerateObjects();
@@ -213,55 +216,68 @@ public class GenerationManager : MonoBehaviour
         //Fetch parents
         _activeBoats.RemoveAll(item => item == null);
         _activeBoats.Sort();
-        if (_activeBoats.Count == 0)
+        if (_activeBoats.Count < boatParentSize)
         {
             GenerateBoats(_boatParents);
         }
         _boatParents = new BoatLogic[boatParentSize];
         for (int i = 0; i < boatParentSize; i++)
         {
+            Debug.Log($"index: {i}, parentCount {_boatParents.Length}, active: {_activeBoats.Count}");
             _boatParents[i] = _activeBoats[i];
         }
 
         BoatLogic lastBoatWinner = _activeBoats[0];
         lastBoatWinner.name += "Gen-" + generationCount; 
         lastBoatWinnerData = lastBoatWinner.GetData();
-        PrefabUtility.SaveAsPrefabAsset(lastBoatWinner.gameObject, savePrefabsAt + lastBoatWinner.name + ".prefab");
+        if (savePrefabs) PrefabUtility.SaveAsPrefabAsset(lastBoatWinner.gameObject, savePrefabsAt + lastBoatWinner.name + ".prefab");
         
+        //Carnivores (Pirates)
         _activePirates.RemoveAll(item => item == null);
         _activePirates.Sort();
+        if (_activePirates.Count < pirateParentSize)
+        {
+            GeneratePirates(_pirateParents);
+        }
         _pirateParents = new PirateLogic[pirateParentSize];
         for (int i = 0; i < pirateParentSize; i++)
         {
+            Debug.Log($"index: {i}, parentCount {_pirateParents.Length}, active: {_activePirates.Count}");
             _pirateParents[i] = _activePirates[i];
         }
 
         PirateLogic lastPirateWinner = _activePirates[0];
         lastPirateWinner.name += "Gen-" + generationCount; 
         lastPirateWinnerData = lastPirateWinner.GetData();
-        PrefabUtility.SaveAsPrefabAsset(lastPirateWinner.gameObject, savePrefabsAt + lastPirateWinner.name + ".prefab");
+        if (savePrefabs) PrefabUtility.SaveAsPrefabAsset(lastPirateWinner.gameObject, savePrefabsAt + lastPirateWinner.name + ".prefab");
         
         //Omnivores
         _activeOmnivores.RemoveAll(item => item == null);
         _activeOmnivores.Sort();
+        if (_activeOmnivores.Count < omnivoreParentSize)
+        {
+            GenerateOmnivores(_omnivoreParents);
+        }
         _omnivoreParents = new OmnivoreScript[omnivoreParentSize];
         for (int i = 0; i < omnivoreParentSize; i++)
         {
+            Debug.Log($"index: {i}, parentCount {_omnivoreParents.Length}, active: {_activeOmnivores.Count}");
             _omnivoreParents[i] = _activeOmnivores[i];
         }
 
         OmnivoreScript lastOmnivoreWinner = _activeOmnivores[0];
         lastOmnivoreWinner.name += "Gen-" + generationCount; 
         lastOmnivoreWinnerData = lastOmnivoreWinner.GetData();
-        PrefabUtility.SaveAsPrefabAsset(lastOmnivoreWinner.gameObject, savePrefabsAt + lastOmnivoreWinner.name + ".prefab");
+        if (savePrefabs) PrefabUtility.SaveAsPrefabAsset(lastOmnivoreWinner.gameObject, savePrefabsAt + lastOmnivoreWinner.name + ".prefab");
         
         //Winners:
-        Debug.Log("Last winner boat had: " + lastBoatWinner.GetPoints() + " points!" + " Last winner pirate had: " + lastPirateWinner.GetPoints() + " points!" 
-                  + "Last winner Omni had: " + lastOmnivoreWinner.GetPoints() + " points!" );
+        // Debug.Log("Last winner boat had: " + lastBoatWinner.GetPoints() + " points!" + " Last winner pirate had: " + lastPirateWinner.GetPoints() + " points!" 
+        //           + "Last winner Omni had: " + lastOmnivoreWinner.GetPoints() + " points!" );
         
         GenerateObjects(_boatParents, _pirateParents, _omnivoreParents);
         
-        Logger.instance.SaveData(generationCount, lastBoatWinner.GetPoints(), lastPirateWinner.GetPoints(), lastOmnivoreWinner.GetPoints());
+        Logger.instance.SaveData(generationCount, lastBoatWinner.GetPoints(), lastPirateWinner.GetPoints(), lastOmnivoreWinner.GetPoints(), 
+            boatGenerator.transform.childCount, pirateGenerator.transform.childCount, omnivoreGenerator.transform.childCount);
     }
 
      /// <summary>
