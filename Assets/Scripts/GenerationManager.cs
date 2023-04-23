@@ -46,6 +46,8 @@ public class GenerationManager : MonoBehaviour
     [Header("Prefab Saving")]
     [SerializeField] 
     private bool savePrefabs;
+    [SerializeField] 
+    private bool runTill100;
     [SerializeField]
     private string savePrefabsAt;
     
@@ -67,6 +69,8 @@ public class GenerationManager : MonoBehaviour
     private BoatLogic[] _boatParents;
     private PirateLogic[] _pirateParents;
     private OmnivoreScript[] _omnivoreParents;
+
+    protected bool firstRun = true;
     
     protected void Awake()
     {
@@ -121,6 +125,7 @@ public class GenerationManager : MonoBehaviour
         GenerateBoats(boatParents);
         GeneratePirates(pirateParents);
         GenerateOmnivores(omnivoreParents);
+        firstRun = false;
     }
 
      /// <summary>
@@ -223,7 +228,6 @@ public class GenerationManager : MonoBehaviour
         _boatParents = new BoatLogic[boatParentSize];
         for (int i = 0; i < boatParentSize; i++)
         {
-            Debug.Log($"index: {i}, parentCount {_boatParents.Length}, active: {_activeBoats.Count}");
             _boatParents[i] = _activeBoats[i];
         }
 
@@ -242,7 +246,6 @@ public class GenerationManager : MonoBehaviour
         _pirateParents = new PirateLogic[pirateParentSize];
         for (int i = 0; i < pirateParentSize; i++)
         {
-            Debug.Log($"index: {i}, parentCount {_pirateParents.Length}, active: {_activePirates.Count}");
             _pirateParents[i] = _activePirates[i];
         }
 
@@ -261,7 +264,6 @@ public class GenerationManager : MonoBehaviour
         _omnivoreParents = new OmnivoreScript[omnivoreParentSize];
         for (int i = 0; i < omnivoreParentSize; i++)
         {
-            Debug.Log($"index: {i}, parentCount {_omnivoreParents.Length}, active: {_activeOmnivores.Count}");
             _omnivoreParents[i] = _activeOmnivores[i];
         }
 
@@ -269,7 +271,13 @@ public class GenerationManager : MonoBehaviour
         lastOmnivoreWinner.name += "Gen-" + generationCount; 
         lastOmnivoreWinnerData = lastOmnivoreWinner.GetData();
         if (savePrefabs) PrefabUtility.SaveAsPrefabAsset(lastOmnivoreWinner.gameObject, savePrefabsAt + lastOmnivoreWinner.name + ".prefab");
-        
+        if (runTill100 && generationCount == 100)
+        {
+            PrefabUtility.SaveAsPrefabAsset(lastBoatWinner.gameObject, savePrefabsAt + lastBoatWinner.name + ".prefab");
+            PrefabUtility.SaveAsPrefabAsset(lastPirateWinner.gameObject, savePrefabsAt + lastPirateWinner.name + ".prefab");
+            PrefabUtility.SaveAsPrefabAsset(lastOmnivoreWinner.gameObject, savePrefabsAt + lastOmnivoreWinner.name + ".prefab");
+            EditorApplication.isPlaying = false;
+        }
         //Winners:
         // Debug.Log("Last winner boat had: " + lastBoatWinner.GetPoints() + " points!" + " Last winner pirate had: " + lastPirateWinner.GetPoints() + " points!" 
         //           + "Last winner Omni had: " + lastOmnivoreWinner.GetPoints() + " points!" );

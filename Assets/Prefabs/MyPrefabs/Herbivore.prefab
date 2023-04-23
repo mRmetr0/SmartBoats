@@ -81,7 +81,7 @@ MonoBehaviour:
   steps: 0
   rayRadius: 16
   sight: 30
-  movingSpeed: 5
+  movingSpeed: 7
   randomDirectionValue: {x: -1, y: 1}
   boxWeight: 1
   distanceFactor: 1

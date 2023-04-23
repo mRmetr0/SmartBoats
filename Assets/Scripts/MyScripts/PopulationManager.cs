@@ -4,11 +4,32 @@ using UnityEngine;
 
 public class PopulationManager : GenerationManager
 {
-    [SerializeField] private float minimalPointsThreshHold = 0.5f;
+    [Header("Minimal Thresholds")]
+    [SerializeField] private float minHerbThreshHold = 0f;
+    [SerializeField] private float minCarnThreshHold = 0f;
+    [SerializeField] private float minOmniThreshHold = 0f;
+    
+    [Space(5)]
+    [Header("Minimal Growth")]
+    [SerializeField] private int herbGrowth = 0;
+    [SerializeField] private int carniGrowth = 0;
+    [SerializeField] private int omniGrowth = 0;
+    
+    [Space(5)]
+    [Header("Minimal Offsprings")]
     [SerializeField] private int minHerbOffspring = 0;
     [SerializeField] private int minCarnOffspring = 0;
     [SerializeField] private int minOmniOffspring = 0;
+    
+    [Space(5)]
+    [Header("Apex threshold")]
+    [SerializeField] private float apexHerbThreshold = 0;
+    [SerializeField] private float apexCarnThreshold = 0;
+    [SerializeField] private float apexOmniThreshold = 0;
+    private float _minimalThreshold;
+    private float _apexThreshold;
     private int _minimalOffspring;
+    private int _constGrowth;
     
     void Awake()
     {
@@ -17,34 +38,52 @@ public class PopulationManager : GenerationManager
 
     protected override void GeneratePirates(PirateLogic[] pirateParents)
     {
-         _minimalOffspring = Mathf.Max(pirateParentSize, minCarnOffspring);
-         _activePirates = new List<PirateLogic>();
+        if (firstRun)
+        {
+            base.GeneratePirates(pirateParents);
+            return;
+        }
         
-         int populationSize = ModulatePopulation(pirateGenerator);
-         List<GameObject> objects = pirateGenerator.RegenerateObjects(populationSize);
-         foreach (GameObject obj in objects)
-         {
-             PirateLogic pirate = obj.GetComponent<PirateLogic>();
-             if (pirate != null)
-             {
-                 _activePirates.Add(pirate);
-                 if (pirateParents != null)
-                 {
-                     PirateLogic pirateParent = pirateParents[Random.Range(0, pirateParents.Length)];
-                     pirate.Birth(pirateParent.GetData());
-                 }
+        _minimalThreshold = minCarnThreshHold;
+        _apexThreshold = apexCarnThreshold;
+        _minimalOffspring = Mathf.Max(pirateParentSize, minCarnOffspring);
+        _constGrowth = carniGrowth;
+        
+        _activePirates = new List<PirateLogic>();
+        int populationSize = ModulatePopulation(pirateGenerator);
+        List<GameObject> objects = pirateGenerator.RegenerateObjects(populationSize);
+        foreach (GameObject obj in objects)
+        {
+            PirateLogic pirate = obj.GetComponent<PirateLogic>();
+            if (pirate != null)
+            {
+                _activePirates.Add(pirate);
+                if (pirateParents != null)
+                {
+                    PirateLogic pirateParent = pirateParents[Random.Range(0, pirateParents.Length)];
+                    pirate.Birth(pirateParent.GetData());
+                }
 
-                 pirate.Mutate(mutationFactor, mutationChance);
-                 pirate.AwakeUp();
-             }
-         }
+                pirate.Mutate(mutationFactor, mutationChance);
+                pirate.AwakeUp();
+            }
+        }
     }
      
     protected override void GenerateOmnivores(OmnivoreScript[] omnivoreParents)
     {
-        _minimalOffspring = Mathf.Max(omnivoreParentSize, minOmniOffspring) ;
+        if (firstRun)
+        {
+            base.GenerateOmnivores(omnivoreParents);
+            return;
+        }
+
+        _minimalThreshold = minOmniThreshHold;
+        _apexThreshold = apexOmniThreshold;
+        _minimalOffspring = Mathf.Max(omnivoreParentSize, minOmniOffspring);
+        _constGrowth = omniGrowth;
+        
         _activeOmnivores = new List<OmnivoreScript>();
-         
         int populationSize = ModulatePopulation(omnivoreGenerator);
         List<GameObject> objects = omnivoreGenerator.RegenerateObjects(populationSize);
         foreach (GameObject obj in objects)
@@ -67,11 +106,19 @@ public class PopulationManager : GenerationManager
     
     protected override void GenerateBoats(BoatLogic[] boatParents)
     {
-        _minimalOffspring = Mathf.Max(boatParentSize, minHerbOffspring);
-        _activeBoats = new List<BoatLogic>();
+        if (firstRun)
+        {
+            base.GenerateBoats(boatParents);
+            return;
+        }
 
+        _minimalThreshold = minHerbThreshHold;
+        _minimalOffspring = Mathf.Max(boatParentSize, minHerbOffspring);
+        _apexThreshold = apexHerbThreshold;
+        _constGrowth = herbGrowth;
+        
+        _activeBoats = new List<BoatLogic>();
         int populationSize = ModulatePopulation(boatGenerator);
-        Debug.Log(populationSize);
         List<GameObject> objects = boatGenerator.RegenerateObjects(populationSize);
         foreach (GameObject obj in objects)
         {
@@ -94,18 +141,24 @@ public class PopulationManager : GenerationManager
     private int ModulatePopulation(GenerateObjectsInArea generator)
     {
         int oldCount = generator.transform.childCount;
-        int offspring = oldCount;
-        if (offspring == 0) return _minimalOffspring;
-        for (int i = oldCount; i <= 0; i--)
+        if (oldCount == 0)
         {
-            AgentLogic agent = generator.transform.GetChild(i).GetComponent<AgentLogic>();
-            if (agent.GetPoints() <= minimalPointsThreshHold)
+            return _minimalOffspring;
+        }
+        int offspring = oldCount;
+        for (int i = 0; i < oldCount; i++)
+        {
+            float agentPoints = generator.transform.GetChild(i).GetComponent<AgentLogic>().GetPoints();
+            if (agentPoints < _minimalThreshold)
             {
-                offspring--;
+                offspring = Mathf.Max(offspring - 1, _minimalOffspring);
+            } else if (agentPoints >= _apexThreshold)
+            {
+                offspring += 1 * (int)(agentPoints/_apexThreshold);
             }
         }
-        offspring = Mathf.Max(offspring, _minimalOffspring);
-        Debug.Log("Generator: "+generator +"offspring:"+offspring);
-        return offspring;
+        offspring = Mathf.Clamp(offspring, _minimalOffspring, 200);
+        //Debug.Log("Generator: "+generator +"offspring:"+offspring);
+        return offspring + _constGrowth;
     }
 }

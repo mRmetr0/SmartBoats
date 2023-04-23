@@ -81,12 +81,12 @@ MonoBehaviour:
   steps: 0
   rayRadius: 16
   sight: 40
-  movingSpeed: 4
-  randomDirectionValue: {x: 0, y: 0}
+  movingSpeed: 6
+  randomDirectionValue: {x: -1, y: 1}
   boxWeight: 1
   distanceFactor: 1
-  boatWeight: 1
-  boatDistanceFactor: 1
+  boatWeight: 2
+  boatDistanceFactor: 2
   enemyWeight: -1
   enemyDistanceFactor: -1
   omnivoreWeight: 0
